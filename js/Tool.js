@@ -21,7 +21,7 @@ $.widget("editor.utility", {
 	    res[8] = res[13] = res[18] = res[23] = '-';
 	    return res.join('');
 	},
-	adjustDomSize: function(domObj) {
+	adjustDomSize: function(domObj, ignores) {
 		var cssWidthArray = ["padding-left", "padding-right",
 		                     "margin-left", "margin-right",
 		                     "border-left-width", "border-right-width"];
@@ -31,6 +31,16 @@ $.widget("editor.utility", {
 		var len;
 		var widthToRemove = 0;
 		var heightToRemove = 0;
+		
+		if ($.type(ignores) == 'array') {
+		    cssWidthArray = $.grep(cssWidthArray, function(str) {
+		        return ignores.indexOf(str) === -1;
+		    })
+		    
+		    cssHeightArray = $.grep(cssHeightArray, function(str) {
+		        return ignores.indexOf(str) === -1;
+            })
+		}
 		
 		$.each(cssWidthArray, function(i, style) {
 			len = parseInt(domObj.css(style));
@@ -44,6 +54,7 @@ $.widget("editor.utility", {
 				heightToRemove += len;
 			}
 		})
+		console.log("heightToRemove", widthToRemove, heightToRemove);
 		domObj.width(domObj.width() - widthToRemove).height(domObj.height() - heightToRemove);
 	},
 	//This function is used to clone an new svg element with different gradient id. That's for fixing wired Chrome gradient behavior.

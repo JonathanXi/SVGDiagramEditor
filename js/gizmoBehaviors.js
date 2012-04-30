@@ -222,22 +222,53 @@
 		},
 
 		_mouseDrag: function(event, noPropagation) {
-			var gizmo = this.gizmo;
-			var shape = gizmo.shape;
-			var x;
-			var y;
-			var mousePressedPosition = this.mousePressedPosition;
-			x = event.clientX - mousePressedPosition.x;
-			y = event.clientY - mousePressedPosition.y;
-			this.mousePressedPosition = {
-					"x": event.clientX,
-					"y": event.clientY
-			}
-			shape.moveByRelatviePosition({"x": x, "y": y});
-			gizmo.moveToShape(shape);
+		    if (!this.isCursorInCanvas(event)) {
+		        return;
+		    }
+		    this.move({x: event.clientX, y: event.clientY});
 			event.preventDefault();
 			return false;
 		},
+		
+		move: function(eventPosition) {
+		    var gizmo = this.gizmo;
+            var shape = gizmo.shape;
+            var x;
+            var y;
+            var mousePressedPosition = this.mousePressedPosition;
+            x = eventPosition.x - mousePressedPosition.x;
+            y = eventPosition.y - mousePressedPosition.y;
+            this.mousePressedPosition = {
+                    "x": eventPosition.x,
+                    "y": eventPosition.y
+            }
+            shape.moveByRelatviePosition({"x": x, "y": y});
+            gizmo.moveToShape(shape);
+		},
+		
+        isCursorInCanvas: function(event) {
+            var gizmo = this.gizmo;
+            var shape = gizmo.shape;
+            var shapeCenter = shape.center();
+            var canvasWidth = $("#canvas").width();
+            var canvasHeight = $("#canvas").height();
+            var canvasOffset = $("#canvas").offset();
+            var relX = event.clientX - canvasOffset.left;
+            var relY = event.clientY  - canvasOffset.top + document.body.scrollTop;
+            var cursorPos = {x: event.clientX, y: event.clientY};
+            if (relX < 0 || relX >= canvasWidth) {
+                cursorPos.x = this.mousePressedPosition.x;
+            }
+            
+            if (relY < 0 || relY >= canvasHeight) {
+                cursorPos.y = this.mousePressedPosition.y;
+            }
+            if (cursorPos.x || cursorPos.y) {
+                this.move(cursorPos);
+                return false;
+            }
+            return true;
+        },
 
 		_mouseUp: function(event) {
 			return $.editor.editorMouse.prototype._mouseUp.call(this, event);
@@ -352,7 +383,7 @@
 			var angle = Math.PI * rotateAngle / 180;
 			var scaleReferPosition = shape.getCanvasPosition(this.mousePressedPosition);
 			this.scaleReferPosition = scaleReferPosition;
-			this.scaleLastPosition = null;
+			this.shapeScaleNumber = shape.scaleNumber;
 			return true;
 		},
 		
@@ -378,8 +409,12 @@
 			
 			var referPosition = this.scaleReferPosition;
 			
-			var rotateAngle = shape.rotateAngle;
-			var angle = Math.PI * rotateAngle / 180;
+			/*if (Math.abs(currentMousePosition.x - referPosition.x) > 25) {
+			    return;
+			}*/
+			
+			//var rotateAngle = shape.rotateAngle;
+			//var angle = Math.PI * rotateAngle / 180;
 			
 			//var newX = (currentMousePosition.y - referPosition.y) * Math.sin(angle) + (currentMousePosition.x - referPosition.x) * Math.cos(angle);
 			var newY = referPosition.y - currentMousePosition.y;
@@ -391,21 +426,23 @@
 			} else {
 				scaleNumber = (curLen + 50) / 50;
 			}
-            shape.objectGroup.setAttributeNS(null, "transform", "scale(" + shape.scaleNumber * scaleNumber  + ")");
-            gizmo.scaleNumber = scaleNumber;
+			//var shapeCenter = shape.center();
+			//console.log(shape.scaleNumber * scaleNumber);
+            //shape.objectGroup.setAttributeNS(null, "transform", "scale(" + shape.scaleNumber * scaleNumber  + ")");
+			gizmo.shape.scaleWhenDrag(this.shapeScaleNumber * scaleNumber);
 			event.preventDefault();
 
 			return false;
 		},
 
 		_mouseUp: function(event) {
-			var gizmo = this.gizmo;
-			var scaleNumber = gizmo.scaleNumber;
-			gizmo.shape.scale(scaleNumber);
-			scaleNumber = 1;
-			gizmo.scaleNode.setAttributeNS(null, "transform", "scale(" + scaleNumber + ")");
-			gizmo.scaleNumber = scaleNumber;
-			gizmo.moveToShape(gizmo.shape);
+			//var gizmo = this.gizmo;
+			//var scaleNumber = gizmo.scaleNumber;
+			//gizmo.shape.scale(scaleNumber);
+			//scaleNumber = 1;
+			//gizmo.scaleNode.setAttributeNS(null, "transform", "scale(" + scaleNumber + ")");
+			//gizmo.scaleNumber = scaleNumber;
+			//gizmo.moveToShape(gizmo.shape);
 			
 			return $.editor.editorMouse.prototype._mouseUp.call(this, event);
 		}

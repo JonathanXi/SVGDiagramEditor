@@ -94,6 +94,12 @@
 					diagram.loadPaletteToolBar(result.rows[0]);
 				}
 			});
+			
+			$.get(options.gizmoPath, function(csvData){
+			    var result = $("#diagramEditor").utility("parseCSVFileToJSON", csvData);
+                $("#canvas").canvas("initCanvasGizmo", result.gizmo);
+            });
+			
 			element.show();
 		},
 		loadPaletteToolBar: function(config) {
@@ -118,7 +124,7 @@
 				diagramHeight = diagramWidth * diagramRatio[1] / diagramRatio[0];
 			}
 			diagramObj.width(diagramWidth).height(diagramHeight - diagramObj.offset().top);
-			utility.adjustDomSize(diagramObj);
+			utility.adjustDomSize(diagramObj, ["margin-left", "margin-right"]);
 			var canvasObj = diagramObj.find("#canvas");
 			this.setDomSizeByRatio(canvasObj, canvasRatio, diagramObj, diagramRatio);
 			utility.adjustDomSize(canvasObj);
@@ -138,12 +144,6 @@
 		},
 		load: function(diagramId) {
 			var self = this;
-			var gizmoPath = this.options.gizmoPath;
-			
-			$.get(gizmoPath, function(csvData){
-				var result = $("#diagramEditor").utility("parseCSVFileToJSON", csvData);
-				$("#canvas").canvas("initCanvasGizmo", result.gizmo);
-			});
 			
 			$.getJSON("test/loadJSON.json", function(response) {
 				$("#canvas").canvas("load", response);
@@ -225,6 +225,8 @@
 			var utility = $("#diagramEditor").data("utility");
 			var paletteToolbar = this;
 			element.empty();
+			element.append("<div style='relatvie; width: 100%; height: 100%;'></div>");
+			var toolbarContainer = element.find("div");
 			$.each(svgDocs, function(i, obj){
 				if (i >= total) {
 					return false;
@@ -235,7 +237,7 @@
 				var left = i % colsNum * buttonDivSize[0];
 				var top = parseInt(i / colsNum) * buttonDivSize[1];
 				
-				element.append(buttonDiv);
+				toolbarContainer.append(buttonDiv);
 				buttonDiv.width(buttonDivSize[0]).height(buttonDivSize[1]).css({left: left, top: top});
    	        	utility.adjustDomSize(buttonDiv);
    	        	svgElement = utility.newSVGElement(obj.dom, buttonDiv);
@@ -255,7 +257,6 @@
 			$.get(config.path, function(csvData){
 				var result = $("#diagramEditor").utility("parseCSVFileToJSON", csvData);
 				$("#palette").palette("initPalette", config, result.palette);
-				$("#canvas").canvas("initCanvasGizmo", result.gizmo);
 			});
 		}
 	});
@@ -410,6 +411,7 @@
         	
         	$(".palette-group svg").draggable({
         		cursor: 'pointer', 
+        		appendTo: $("#diagramEditor"),
         		helper: function(){
         			var svgDiv = $(this).parent().clone().css({"border":"0px"}).width($(this).width()).height($(this).height());
         			svgDiv.empty().append(shapeStencils[svgDiv.attr("name")]["new"]);
@@ -496,6 +498,8 @@
 		save: function() {
 			var json = "{" +
 							"\"id\": \"" + this.id + "\"," +
+							"\"width\": " + this.element.width() + "," +
+							"\"height\": " + this.element.height() + "," +
 							"\"shapes\": [" + this.shapesJSON() + "]" +
 					   "}";
 			return json;
@@ -658,6 +662,14 @@
 			this.scaleNumber = newNum;
 			this.adjustShape();
 		},
+		scaleWhenDrag: function(scaleNumber) {
+		    var originCenter = this.center();
+            this.objectGroup.setAttributeNS(null, "transform", "scale(" + scaleNumber + ")");
+            this.scaleNumber = scaleNumber;
+            this.adjustShape();
+            var currentCenter = this.center();
+            this.moveByRelatviePosition({x: originCenter.x - currentCenter.x, y: originCenter.y - currentCenter.y});
+		},
 		adjustShape: function() {
 			var rotatePoint = this.calRotatePoint();
 			var centerPoint = {
@@ -707,8 +719,12 @@
 				this.move();
 			}
 		},
-		move: function() {
-			this.node.setAttributeNS(null, "transform", "translate(" + this.upperLeft.x + ", " + this.upperLeft.y +")");
+		move: function(pos) {
+		    if (pos) {
+		        this.upperLeft = pos;
+		    }
+		    var upperLeft = this.upperLeft;
+			this.node.setAttributeNS(null, "transform", "translate(" + upperLeft.x + ", " + upperLeft.y +")");
 		},
 		calRotatePoint: function() {
 			var upperLeft = {
@@ -786,7 +802,7 @@
 			var bodyScrollTop = document.body.scrollTop;
 			return {
 				"x" : position.x - canvasOffset.left,//position.x - screenCTM.e,
-				"y"	: position.y - canvasOffset.top//position.y - screenCTM.f - bodyScrollTop
+				"y"	: position.y - canvasOffset.top - bodyScrollTop//position.y - screenCTM.f - bodyScrollTop
 			}
 		},
 		setPosition: function(position) {
